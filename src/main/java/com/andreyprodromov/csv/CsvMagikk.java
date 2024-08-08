@@ -21,10 +21,10 @@ public class CsvMagikk {
     public static void main(String[] args) {
         CsvMagikk csvMagikk = new CsvMagikk();
         String csv = "Name, Age, City\r\n" +
-            "\"John Doe\", 30, \"New York\"\r\n" +
-            "\"Jane Doe\", 25, \"Los Angeles\"\r\n" +
-            "\"Alice\", 35, \"Chicago\"\r\n" +
-            "\"Bob\", 40, \"Houston\"\r\n";
+                "\"John Doe\", 30, \"New York\"\r\n" +
+                "\"Jane Doe\", 25, \"Los Angeles\"\r\n" +
+                "\"Alice\", 35, \"Chicago\"\r\n" +
+                "\"Bob\", 40, \"Houston\"\r\n";
 
         if (csvMagikk.isValidCsv(csv)) {
             System.out.println("CSV is valid");
@@ -125,8 +125,8 @@ public class CsvMagikk {
                 if (arr[idx] == columnDelimiter && notInEscapedString) {
                     if (cellStartedWithRfc4180EscapedString && idx > 0 && arr[idx - 1] != stringDelimiter) {
                         out.printf(
-                            "ERROR: row number %d has a column that started with opening quote, but didn't use closing quote%n",
-                            rowNumber
+                                "ERROR: row number %d has a column that started with opening quote, but didn't use closing quote%n",
+                                rowNumber
                         );
 
                         hasErrors = true;
@@ -137,8 +137,8 @@ public class CsvMagikk {
                 } else if (arr[idx] == stringDelimiter) {
                     if (!cellStartedWithRfc4180EscapedString) {
                         out.printf(
-                            "ERROR: row number %d appears to use quotes without enclosing field in quotes%n",
-                            rowNumber
+                                "ERROR: row number %d appears to use quotes without enclosing field in quotes%n",
+                                rowNumber
                         );
 
                         hasErrors = true;
@@ -151,10 +151,10 @@ public class CsvMagikk {
                     }
                 }
 
-                if (idx < arr.length && idx + 1 < arr.length  && arr[idx] == '\r' && arr[idx + 1] != '\n') {
+                if (idx < arr.length && idx + 1 < arr.length && arr[idx] == '\r' && arr[idx + 1] != '\n') {
                     out.printf(
-                        "WARNING: row number %d uses CR without LF%n",
-                        rowNumber
+                            "WARNING: row number %d uses CR without LF%n",
+                            rowNumber
                     );
 
                     hasWarnings = true;
@@ -168,10 +168,10 @@ public class CsvMagikk {
 
             if (currentColumnCount != headerColumnCount) {
                 out.printf(
-                    "ERROR: row number %d has different number of columns (Expected: %d, Actual: %d)%n",
-                    rowNumber,
-                    headerColumnCount,
-                    currentColumnCount
+                        "ERROR: row number %d has different number of columns (Expected: %d, Actual: %d)%n",
+                        rowNumber,
+                        headerColumnCount,
+                        currentColumnCount
                 );
 
                 hasErrors = true;
@@ -179,8 +179,8 @@ public class CsvMagikk {
 
             if (!notInEscapedString) {
                 out.printf(
-                    "ERROR: last column in row number %d does not have properly escaped quotes%n",
-                    rowNumber
+                        "ERROR: last column in row number %d does not have properly escaped quotes%n",
+                        rowNumber
                 );
 
                 hasErrors = true;
@@ -193,8 +193,8 @@ public class CsvMagikk {
 
             if (idx + 1 < arr.length && (arr[idx + 1] == '\r' || arr[idx + 1] == '\n')) {
                 out.printf(
-                    "WARNING: row number %d appears to have more than one newline%n",
-                    rowNumber
+                        "WARNING: row number %d appears to have more than one newline%n",
+                        rowNumber
                 );
 
                 hasWarnings = true;
@@ -293,7 +293,7 @@ public class CsvMagikk {
         if (cell.indexOf(stringDelimiter) != -1) {
             cell = cell.replace(strDelimiter, escapedStrDelimiter);
             cell = strDelimiter + cell + strDelimiter;
-        } else if (cell.indexOf('\r') != -1 || cell.indexOf('\n') != -1 ||  cell.indexOf(columnDelimiter) != -1) {
+        } else if (cell.indexOf('\r') != -1 || cell.indexOf('\n') != -1 || cell.indexOf(columnDelimiter) != -1) {
             cell = strDelimiter + cell + strDelimiter;
         }
 
