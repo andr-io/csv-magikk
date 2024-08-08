@@ -16,7 +16,7 @@ public class CsvMagikk {
     private final String escapedStrDelimiter;
     private final String colDelimiter;
 
-    public List<String> columnHeaders;
+    private List<String> columnHeaders;
 
     // To test the CsvMagikk class
     public static void main(String[] args) {
@@ -46,7 +46,7 @@ public class CsvMagikk {
 
         Path path = Path.of("src/main/resources/csv.csv");
         try {
-            Files.write(path, csvString.getBytes(StandardCharsets.UTF_8));
+            Files.writeString(path, csvString);
         } catch (Exception e) {
             e.printStackTrace();
         }
