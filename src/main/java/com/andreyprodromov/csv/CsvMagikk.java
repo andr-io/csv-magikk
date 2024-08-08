@@ -9,13 +9,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class CsvMagikk {
-
     private final char columnDelimiter;
     private final char stringDelimiter;
 
     private final String strDelimiter;
     private final String escapedStrDelimiter;
     private final String colDelimiter;
+
+    public List<String> columnHeaders;
 
     // To test the CsvMagikk class
     public static void main(String[] args) {
@@ -321,6 +322,38 @@ public class CsvMagikk {
         while (arr[idx] != '\n' || !evenNumberOfQuotes) {
             if (arr[idx] == columnDelimiter && evenNumberOfQuotes) {
                 columnsCount++;
+            }
+
+            if (arr[idx] == stringDelimiter) {
+                evenNumberOfQuotes = !evenNumberOfQuotes;
+            }
+
+            idx++;
+        }
+
+        return columnsCount;
+    }
+
+    // char[] arr must start with the first row of the csv
+    private int calculateColumnsCountAndRecordColumns(char[] arr) {
+        columnHeaders = new ArrayList<>();
+
+        int idx = 0;
+        int columnsCount = 1; // We start from one because bottom counter doesn't count last column
+        StringBuilder currentColumn = new StringBuilder();
+
+        // commas are a legal character when surrounded by apostrophes
+        // e.g. "This is one, value".
+        boolean evenNumberOfQuotes = true;
+
+        while (arr[idx] != '\n' || !evenNumberOfQuotes) {
+            if (arr[idx] == columnDelimiter && evenNumberOfQuotes) {
+                columnHeaders.add(currentColumn.toString());
+                currentColumn = new StringBuilder();
+
+                columnsCount++;
+            } else {
+                currentColumn.append(arr[idx]);
             }
 
             if (arr[idx] == stringDelimiter) {
