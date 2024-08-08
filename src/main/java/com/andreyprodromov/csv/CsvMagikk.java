@@ -22,10 +22,10 @@ public class CsvMagikk {
     public static void main(String[] args) {
         CsvMagikk csvMagikk = new CsvMagikk();
         String csv = "Name, Age, City\r\n" +
-                "\"John Doe\", 30, \"New York\"\r\n" +
-                "\"Jane Doe\", 25, \"Los Angeles\"\r\n" +
-                "\"Alice\", 35, \"Chicago\"\r\n" +
-                "\"Bob\", 40, \"Houston\"\r\n";
+                "John Doe, 30, New York\r\n" +
+                "Jane Doe, 25, Los Angeles\r\n" +
+                "Alice, 35, Chicago\r\n" +
+                "Bob, 40, Houston\r\n";
 
         if (csvMagikk.isValidCsv(csv)) {
             System.out.println("CSV is valid");
