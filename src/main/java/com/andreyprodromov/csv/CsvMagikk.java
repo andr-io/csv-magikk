@@ -2,13 +2,11 @@ package com.andreyprodromov.csv;
 
 import java.io.OutputStream;
 import java.io.PrintStream;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
 public class CsvMagikk {
+
     private final char columnDelimiter;
     private final char stringDelimiter;
 
