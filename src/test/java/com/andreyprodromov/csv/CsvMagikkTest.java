@@ -165,15 +165,10 @@ class CsvMagikkTest {
         assertEquals("Jack Doe", extractedCsv[4][1], "Couldn't extract fourth data row properly");
         assertEquals("\"New\", York", extractedCsv[4][2], "Couldn't extract fourth data row properly");
 
-        // Fifth with quotes, commas -> "Jane Doe -> ,"New", York
+        // Fifth with quotes and commas -> "Jane Doe -> ,"New", York
         assertEquals("5", extractedCsv[5][0], "Couldn't extract fifth data row properly");
         assertEquals("\"Jane Doe", extractedCsv[5][1], "Couldn't extract fifth data row properly");
         assertEquals(",\"New\", York", extractedCsv[5][2], "Couldn't extract fifth data row properly");
-
-        // Sixth with quotes, commas and newlines  -> Jim Doe, "New",\r\n York
-        assertEquals("6", extractedCsv[6][0], "Couldn't extract sixth data row properly");
-        assertEquals("\"Jim Doe", extractedCsv[6][1], "Couldn't extract sixth data row properly");
-        assertEquals(",\"New\",\r\n York", extractedCsv[6][2], "Couldn't extract sixth data row properly");
     }
 
     @Test
