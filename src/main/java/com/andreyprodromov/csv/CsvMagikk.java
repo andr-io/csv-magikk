@@ -7,7 +7,7 @@ import java.util.List;
 
 
 /**
- * This class provides functionality for manipulation and validation of csv Strings.
+ * This class provides functionality for manipulation and validation of csv Strings
  */
 public class CsvMagikk {
 
@@ -275,6 +275,29 @@ public class CsvMagikk {
      */
     public String toCsv(String[][] csv) {
         int columnCount = csv[0].length;
+        toCsvBuilder.setLength(0);
+
+        for (String[] strings : csv) {
+            for (int col = 0; col < columnCount; col++) {
+                String cell = escape(strings[col]);
+                toCsvBuilder.append(cell)
+                            .append(columnDelimiter);
+            }
+
+            // Remove last delimiter and append CRLF
+            toCsvBuilder.setLength(toCsvBuilder.length() - 1);
+            toCsvBuilder.append("\r\n");
+        }
+
+        return toCsvBuilder.toString();
+    }
+
+    /**
+     * @param csv the {@code List} of csv rows to be parsed
+     * @return the {@code String} csv created from parsing the list
+     */
+    public String toCsv(List<String[]> csv) {
+        int columnCount = csv.get(0).length;
         toCsvBuilder.setLength(0);
 
         for (String[] strings : csv) {

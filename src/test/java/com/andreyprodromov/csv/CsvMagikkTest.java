@@ -295,30 +295,30 @@ class CsvMagikkTest {
         assertEquals(expectedCsv, actualCsv, "Did not create proper CSV String");
     }
 
-//    @Test
-//    void toCSVWithListOfStringArraysTest() {
-//        String expectedCsv = "id,name,location\r\n" +
-//                             "1,John Doe,New York\r\n" +
-//                             "2,James Doe,\"\"\"New\"\" York\"\r\n" +
-//                             "3,Mary Doe,\"New, York\"\r\n" +
-//                             "4,Jack Doe,\"\"\"New\"\", York\"\r\n" +
-//                             "5,\"\"\"Jane Doe\",\",\"\"New\"\", York\"\r\n" +
-//                             "6,\"\"\"Jim Doe\",\",\"\"New\"\",\r\n York\"\r\n";
-//
-//        List<String[]> csv = List.of(
-//            new String[]{"id", "name", "location"},
-//            new String[]{"1", "John Doe", "New York"},
-//            new String[]{"2", "James Doe", "\"New\" York"},
-//            new String[]{"3", "Mary Doe", "New, York"},
-//            new String[]{"4", "Jack Doe", "\"New\", York"},
-//            new String[]{"5", "\"Jane Doe", ",\"New\", York"},
-//            new String[]{"6", "\"Jim Doe", ",\"New\",\r\n York"}
-//        );
-//
-//        String actualCsv = csvMagikk.toCsv(csv);
-//
-//        assertEquals(expectedCsv, actualCsv, "Did not create proper CSV String");
-//    }
+    @Test
+    void toCSVWithListOfStringArraysTest() {
+        String expectedCsv = "id,name,location\r\n" +
+            "1,John Doe,New York\r\n" +
+            "2,James Doe,\"\"\"New\"\" York\"\r\n" +
+            "3,Mary Doe,\"New, York\"\r\n" +
+            "4,Jack Doe,\"\"\"New\"\", York\"\r\n" +
+            "5,\"\"\"Jane Doe\",\",\"\"New\"\", York\"\r\n" +
+            "6,\"\"\"Jim Doe\",\",\"\"New\"\",\r\n York\"\r\n";
+
+        List<String[]> csv = List.of(
+            new String[]{"id", "name", "location"},
+            new String[]{"1", "John Doe", "New York"},
+            new String[]{"2", "James Doe", "\"New\" York"},
+            new String[]{"3", "Mary Doe", "New, York"},
+            new String[]{"4", "Jack Doe", "\"New\", York"},
+            new String[]{"5", "\"Jane Doe", ",\"New\", York"},
+            new String[]{"6", "\"Jim Doe", ",\"New\",\r\n York"}
+        );
+
+        String actualCsv = csvMagikk.toCsv(csv);
+
+        assertEquals(expectedCsv, actualCsv, "Did not create proper CSV String");
+    }
 
     @Test
     void toCSVRowTest() {
