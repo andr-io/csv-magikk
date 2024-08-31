@@ -5,6 +5,10 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 
+
+/**
+ * This class provides functionality for manipulation and validation of csv Strings.
+ */
 public class CsvMagikk {
 
     // Logic related
@@ -19,10 +23,18 @@ public class CsvMagikk {
     private final StringBuilder toCsvBuilder = new StringBuilder();
     private final StringBuilder toCsvRowBuilder = new StringBuilder();
 
+
+    /**
+     * Creates a default object that has a COMMA for column delimiter and DOUBLE QUOTE for string delimiter
+     */
     public CsvMagikk() {
         this(',', '"');
     }
 
+    /**
+     * @param columnDelimiter the column delimiter to be used with parsing, creating or validating csv Strings
+     * @param stringDelimiter the string delimiter to be used with parsing, creating or validating csv Strings
+     */
     public CsvMagikk(char columnDelimiter, char stringDelimiter) {
         if (columnDelimiter == stringDelimiter) {
             throw new IllegalStateException("Cannot have same columnDelimiter and stringDelimiter");
@@ -51,6 +63,10 @@ public class CsvMagikk {
         this.escapedStrDelimiter = strDelimiter + strDelimiter;
     }
 
+    /**
+     * @param csv the csv String to check
+     * @return true if file is RFC 4180 compliant
+     */
     public boolean isValidCsv(String csv) {
         return isValidCsv(csv, OutputStream.nullOutputStream(), false);
     }
@@ -59,10 +75,21 @@ public class CsvMagikk {
         return isValidCsv(csv, OutputStream.nullOutputStream(), treatWarningsAsErrors);
     }
 
+    /**
+     * @param csv the csv String to check
+     * @param log the output where errors and warnings to be printer
+     * @return true if file is RFC 4180 compliant and has no warnings
+     */
     public boolean isValidCsv(String csv, OutputStream log) {
         return isValidCsv(csv, log, true);
     }
 
+    /**
+     * @param csv the csv String to check
+     * @param log the output where errors and warnings to be printer
+     * @param treatWarningsAsErrors if warnings should be treated as errors
+     * @return true if file is RFC 4180 compliant
+     */
     public boolean isValidCsv(String csv, OutputStream log, boolean treatWarningsAsErrors) {
         PrintStream out = new PrintStream(log);
         boolean hasErrors = false;
@@ -174,6 +201,10 @@ public class CsvMagikk {
         return !(hasErrors || (treatWarningsAsErrors && hasWarnings));
     }
 
+    /**
+     * @param csv the csv to be parsed
+     * @return a {@code String[][]} matrix created from parsing the file
+     */
     public String[][] parseCsv(String csv) {
         if (csv == null) {
             throw new RuntimeException("Csv string cannot be null");
@@ -238,6 +269,10 @@ public class CsvMagikk {
         return rows.toArray(String[][]::new);
     }
 
+    /**
+     * @param csv the csv matrix to be parsed
+     * @return the {@code String} csv created from parsing the csv matrix
+     */
     public String toCsv(String[][] csv) {
         int columnCount = csv[0].length;
         toCsvBuilder.setLength(0);
@@ -257,6 +292,10 @@ public class CsvMagikk {
         return toCsvBuilder.toString();
     }
 
+    /**
+     * @param columns the columns to be joined and escaped, \r\n is appended at end
+     * @return the {@code String} csv row
+     */
     public String toCsvRow(String[] columns) {
         toCsvRowBuilder.setLength(0);
 
@@ -272,6 +311,10 @@ public class CsvMagikk {
         return toCsvRowBuilder.toString();
     }
 
+    /**
+     * @param cell the cell to be escaped
+     * @return the {@code String} escaped cell
+     */
     public String escape(String cell) {
         escapedCellBuilder.setLength(0);
 
@@ -291,6 +334,11 @@ public class CsvMagikk {
         return cell;
     }
 
+
+    /**
+     * @param arr the csv String as an array
+     * @return the number of columns the csv file has
+     */
     private int calculateColumnsCount(char[] arr) {
         int idx = 0;
         int columnsCount = 1; // We start from one because bottom counter doesn't count last column
