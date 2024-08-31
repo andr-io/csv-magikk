@@ -252,17 +252,6 @@ public class CsvMagikk {
         return sb.toString();
     }
 
-    public String escape(String cell) {
-        if (cell.indexOf(stringDelimiter) != -1) {
-            cell = cell.replace(strDelimiter, escapedStrDelimiter);
-            cell = strDelimiter + cell + strDelimiter;
-        } else if (cell.indexOf('\r') != -1 || cell.indexOf('\n') != -1 || cell.indexOf(columnDelimiter) != -1) {
-            cell = strDelimiter + cell + strDelimiter;
-        }
-
-        return cell;
-    }
-
     public String toCsvRow(String[] columns) {
         StringBuilder sb = new StringBuilder();
 
@@ -275,6 +264,17 @@ public class CsvMagikk {
         sb.append("\r\n");
 
         return sb.toString();
+    }
+
+    public String escape(String cell) {
+        if (cell.indexOf(stringDelimiter) != -1) {
+            cell = cell.replace(strDelimiter, escapedStrDelimiter);
+            cell = strDelimiter + cell + strDelimiter;
+        } else if (cell.indexOf('\r') != -1 || cell.indexOf('\n') != -1 || cell.indexOf(columnDelimiter) != -1) {
+            cell = strDelimiter + cell + strDelimiter;
+        }
+
+        return cell;
     }
 
     private int calculateColumnsCount(char[] arr) {
