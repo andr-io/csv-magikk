@@ -7,12 +7,17 @@ import java.util.List;
 
 public class CsvMagikk {
 
+    // Logic related
     private final char columnDelimiter;
     private final char stringDelimiter;
 
+    // Performance and cache related
     private final String strDelimiter;
     private final String escapedStrDelimiter;
-    private final String colDelimiter;
+    private final StringBuilder parserBuilder = new StringBuilder();
+    private final StringBuilder escapedCellBuilder = new StringBuilder();
+    private final StringBuilder toCsvBuilder = new StringBuilder();
+    private final StringBuilder toCsvRowBuilder = new StringBuilder();
 
     public CsvMagikk() {
         this(',', '"');
@@ -44,7 +49,6 @@ public class CsvMagikk {
 
         this.strDelimiter = String.valueOf(stringDelimiter);
         this.escapedStrDelimiter = strDelimiter + strDelimiter;
-        this.colDelimiter = String.valueOf(columnDelimiter);
     }
 
     public boolean isValidCsv(String csv) {
@@ -186,7 +190,7 @@ public class CsvMagikk {
         boolean notInEscapedString = true;
         boolean cellStartedWithRfc4180EscapedString = true;
 
-        StringBuilder sb = new StringBuilder();
+        parserBuilder.setLength(0);
         List<String[]> rows = new ArrayList<>();
 
         // Parse Csv
@@ -196,14 +200,14 @@ public class CsvMagikk {
             while (idx < arr.length && (arr[idx] != '\n' || !notInEscapedString)) {
                 // If we reach a delimiter with an even number of quotes, then that means it is the end of a column
                 if (notInEscapedString && arr[idx] == columnDelimiter) {
-                    buffer[bufferIdx] = sb.toString();
+                    buffer[bufferIdx] = parserBuilder.toString();
                     bufferIdx++;
-                    sb.setLength(0);
+                    parserBuilder.setLength(0);
                     cellStartedWithRfc4180EscapedString = idx + 1 < arr.length && arr[idx + 1] == stringDelimiter;
                 } else if (arr[idx] == stringDelimiter && cellStartedWithRfc4180EscapedString) {
                     notInEscapedString = !notInEscapedString;
                     if (notInEscapedString && idx + 1 < arr.length && arr[idx + 1] == stringDelimiter) {
-                        sb.append(stringDelimiter);
+                        parserBuilder.append(stringDelimiter);
                         idx++; // Skip next quote
                         notInEscapedString = false; // Because we move index forward we need to account for skipped quote
                     }
@@ -211,7 +215,7 @@ public class CsvMagikk {
                     // Only append delimiter and CR if we're in quoted text.
                     // Skips CR if at end of line.
                     if (arr[idx] != '\r' || !notInEscapedString) {
-                        sb.append(arr[idx]);
+                        parserBuilder.append(arr[idx]);
                     }
                 }
 
@@ -219,8 +223,8 @@ public class CsvMagikk {
             }
 
             // Reached end of line, so we add the last column
-            buffer[bufferIdx] = sb.toString();
-            sb.setLength(0);
+            buffer[bufferIdx] = parserBuilder.toString();
+            parserBuilder.setLength(0);
 
             // Add columns to list, reset buffer index, skip newline
             rows.add(buffer);
@@ -236,42 +240,52 @@ public class CsvMagikk {
 
     public String toCsv(String[][] csv) {
         int columnCount = csv[0].length;
-        StringBuilder sb = new StringBuilder();
+        toCsvBuilder.setLength(0);
 
-        for (int row = 0; row < csv.length; row++) {
+        for (String[] strings : csv) {
             for (int col = 0; col < columnCount; col++) {
-                String cell = escape(csv[row][col]);
-                sb.append(cell).append(columnDelimiter);
+                String cell = escape(strings[col]);
+                toCsvBuilder.append(cell)
+                            .append(columnDelimiter);
             }
 
             // Remove last delimiter and append CRLF
-            sb.setLength(sb.length() - 1);
-            sb.append("\r\n");
+            toCsvBuilder.setLength(toCsvBuilder.length() - 1);
+            toCsvBuilder.append("\r\n");
         }
 
-        return sb.toString();
+        return toCsvBuilder.toString();
     }
 
     public String toCsvRow(String[] columns) {
-        StringBuilder sb = new StringBuilder();
+        toCsvRowBuilder.setLength(0);
 
         for (var col : columns) {
-            sb.append(escape(col)).append(colDelimiter);
+            toCsvRowBuilder.append(escape(col))
+                           .append(columnDelimiter);
         }
 
         // Remove last delimiter and append CRLF
-        sb.setLength(sb.length() - 1);
-        sb.append("\r\n");
+        toCsvRowBuilder.setLength(toCsvRowBuilder.length() - 1);
+        toCsvRowBuilder.append("\r\n");
 
-        return sb.toString();
+        return toCsvRowBuilder.toString();
     }
 
     public String escape(String cell) {
+        escapedCellBuilder.setLength(0);
+
         if (cell.indexOf(stringDelimiter) != -1) {
-            cell = cell.replace(strDelimiter, escapedStrDelimiter);
-            cell = strDelimiter + cell + strDelimiter;
-        } else if (cell.indexOf('\r') != -1 || cell.indexOf('\n') != -1 || cell.indexOf(columnDelimiter) != -1) {
-            cell = strDelimiter + cell + strDelimiter;
+            String escapedStringDelimiter = cell.replace(strDelimiter, escapedStrDelimiter);
+            return escapedCellBuilder.append(strDelimiter)
+                                     .append(escapedStringDelimiter)
+                                     .append(strDelimiter)
+                                     .toString();
+        } else if (cell.indexOf('\n') != -1 || cell.indexOf(columnDelimiter) != -1 || cell.indexOf('\r') != -1) {
+            return escapedCellBuilder.append(strDelimiter)
+                                     .append(cell)
+                                     .append(strDelimiter)
+                                     .toString();
         }
 
         return cell;
