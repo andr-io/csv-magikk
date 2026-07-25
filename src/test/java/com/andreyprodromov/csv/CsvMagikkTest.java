@@ -31,12 +31,58 @@ class CsvMagikkTest {
     }
 
     @Test
+    void escapeTextWithCRTest() {
+        String input = "John, Mary and Sue went to\rtheater";
+
+        String expected = "\"John, Mary and Sue went to\rtheater\"";
+        String actual = csvMagikk.escape(input);
+
+        assertEquals(expected, actual, "CsvMagikk does not escape cells with newlines properly");
+    }
+
+    @Test
     void simpleParseExtractingDataCorrectlyFromCSVWithoutSpecialGimmicksTest() {
         String csv = "Name,Age,City\r\n" +
                      "John Doe,30,New York\r\n" +
                      "Jane Doe,25,Los Angeles\r\n" +
                      "Alice,35,Chicago\r\n" +
                      "Bob,40,Houston\r\n";
+
+        String[][] extractedCsv = csvMagikk.parseCsv(csv);
+
+        // Headers
+        assertEquals("Name", extractedCsv[0][0], "Couldn't extract header row properly");
+        assertEquals("Age", extractedCsv[0][1], "Couldn't extract header row properly");
+        assertEquals("City", extractedCsv[0][2], "Couldn't extract header row properly");
+
+        // First row
+        assertEquals("John Doe", extractedCsv[1][0], "Couldn't extract first data row properly");
+        assertEquals("30", extractedCsv[1][1], "Couldn't extract first data row properly");
+        assertEquals("New York", extractedCsv[1][2], "Couldn't extract first data row properly");
+
+        // Second row
+        assertEquals("Jane Doe", extractedCsv[2][0], "Couldn't extract second data row properly");
+        assertEquals("25", extractedCsv[2][1], "Couldn't extract second data row properly");
+        assertEquals("Los Angeles", extractedCsv[2][2], "Couldn't extract second data row properly");
+
+        // Third row
+        assertEquals("Alice", extractedCsv[3][0], "Couldn't extract third data row properly");
+        assertEquals("35", extractedCsv[3][1], "Couldn't extract third data row properly");
+        assertEquals("Chicago", extractedCsv[3][2], "Couldn't extract third data row properly");
+
+        // Fourth row
+        assertEquals("Bob", extractedCsv[4][0], "Couldn't extract fourth data row properly");
+        assertEquals("40", extractedCsv[4][1], "Couldn't extract fourth data row properly");
+        assertEquals("Houston", extractedCsv[4][2], "Couldn't extract fourth data row properly");
+    }
+
+    @Test
+    void simpleParseExtractingDataCorrectlyFromCSVWithROnlyDelimiter() {
+        String csv = "Name,Age,City\r" +
+            "John Doe,30,New York\r" +
+            "Jane Doe,25,Los Angeles\r" +
+            "Alice,35,Chicago\r" +
+            "Bob,40,Houston\r";
 
         String[][] extractedCsv = csvMagikk.parseCsv(csv);
 
@@ -199,7 +245,19 @@ class CsvMagikkTest {
                      "Alice,35,Chicago\r\n" +
                      "Bob,40,Houston\r\n";
 
-        boolean validationResult = csvMagikk.isValidCsv(csv, true);
+        boolean validationResult = csvMagikk.isValidCsv(csv, System.out, true);
+        assertTrue(validationResult, "Did not return true on valid csv");
+    }
+
+    @Test
+    void validationWhenCSVIsValidLegacyRTest() {
+        String csv = "Name,Age,City\r" +
+            "John Doe,30,New York\r" +
+            "Jane Doe,25,Los Angeles\r" +
+            "Alice,35,Chicago\r" +
+            "Bob,40,Houston\r";
+
+        boolean validationResult = csvMagikk.isValidCsv(csv, System.out, true);
         assertTrue(validationResult, "Did not return true on valid csv");
     }
 

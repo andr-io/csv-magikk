@@ -5,7 +5,6 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 
-
 /**
  * This class provides functionality for manipulation and validation of csv Strings
  */
@@ -27,6 +26,7 @@ public class CsvMagikk {
     /**
      * Creates a default object that has a COMMA for column delimiter and DOUBLE QUOTE for string delimiter
      */
+    @Deprecated
     public CsvMagikk() {
         this(',', '"');
     }
@@ -35,6 +35,7 @@ public class CsvMagikk {
      * @param columnDelimiter the column delimiter to be used with parsing, creating or validating csv Strings
      * @param stringDelimiter the string delimiter to be used with parsing, creating or validating csv Strings
      */
+    @Deprecated
     public CsvMagikk(char columnDelimiter, char stringDelimiter) {
         if (columnDelimiter == stringDelimiter) {
             throw new IllegalStateException("Cannot have same columnDelimiter and stringDelimiter");
@@ -114,7 +115,8 @@ public class CsvMagikk {
         boolean cellStartedWithRfc4180EscapedString = false;
 
         while (idx < arr.length) {
-            while (idx < arr.length && (arr[idx] != '\n' || !notInEscapedString)) {
+            while (idx < arr.length && (arr[idx] != '\r' && arr[idx] != '\n' || !notInEscapedString)) {
+
                 // If we reach a delimiter with an even number of quotes, then that means it is the end of a column
                 if (arr[idx] == columnDelimiter && notInEscapedString) {
                     if (cellStartedWithRfc4180EscapedString && idx > 0 && arr[idx - 1] != stringDelimiter) {
@@ -154,6 +156,11 @@ public class CsvMagikk {
                     hasWarnings = true;
                 }
 
+                idx++;
+            }
+
+            // Legacy Mac CSV's with /r support
+            if (idx + 1 < arr.length && arr[idx] == '\r' && arr[idx + 1] == '\n') {
                 idx++;
             }
 
@@ -228,7 +235,8 @@ public class CsvMagikk {
         while (idx < arr.length) {
             String[] buffer = new String[columnsCount];
 
-            while (idx < arr.length && (arr[idx] != '\n' || !notInEscapedString)) {
+            while (idx < arr.length && (arr[idx] != '\r' && arr[idx] != '\n' || !notInEscapedString)) {
+
                 // If we reach a delimiter with an even number of quotes, then that means it is the end of a column
                 if (notInEscapedString && arr[idx] == columnDelimiter) {
                     buffer[bufferIdx] = parserBuilder.toString();
@@ -250,6 +258,11 @@ public class CsvMagikk {
                     }
                 }
 
+                idx++;
+            }
+
+            // Legacy Mac CSV's with /r support
+            if (idx + 1 < arr.length && arr[idx] == '\r' && arr[idx + 1] == '\n') {
                 idx++;
             }
 
@@ -366,7 +379,7 @@ public class CsvMagikk {
         int idx = 0;
         int columnsCount = 1; // We start from one because bottom counter doesn't count last column
         boolean evenNumberOfQuotes = true;
-        while (arr[idx] != '\n' || !evenNumberOfQuotes) {
+        while (arr[idx] != '\r' && arr[idx] != '\n' || !evenNumberOfQuotes) {
             if (arr[idx] == columnDelimiter && evenNumberOfQuotes) {
                 columnsCount++;
             }
@@ -379,5 +392,23 @@ public class CsvMagikk {
         }
 
         return columnsCount;
+    }
+
+    /**
+     * Creates a new CSV parser that has a COMMA for column delimiter and DOUBLE QUOTE for string delimiter
+     */
+    public static CsvMagikk create() {
+        return new CsvMagikk();
+    }
+
+    /**
+     * Creates a new CSV parser that has {@code columnDelimiter} for column delimiter and {@code stringDelimiter}
+     * for string delimiter
+     *
+     * @param columnDelimiter the column delimiter to be used with parsing, creating or validating csv Strings
+     * @param stringDelimiter the string delimiter to be used with parsing, creating or validating csv Strings
+     */
+    public static CsvMagikk create(char columnDelimiter, char stringDelimiter) {
+        return new CsvMagikk(columnDelimiter, stringDelimiter);
     }
 }
