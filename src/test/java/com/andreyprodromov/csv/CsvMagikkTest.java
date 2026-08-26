@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class CsvMagikkTest {
 
-    CsvMagikk csvMagikk = new CsvMagikk();
+    CsvMagikk csvMagikk = CsvMagikk.create();
 
     @Test
     void escapeTextWithQuotesAndCommasTest() {
@@ -47,6 +47,42 @@ class CsvMagikkTest {
                      "Jane Doe,25,Los Angeles\r\n" +
                      "Alice,35,Chicago\r\n" +
                      "Bob,40,Houston\r\n";
+
+        String[][] extractedCsv = csvMagikk.parseCsv(csv);
+
+        // Headers
+        assertEquals("Name", extractedCsv[0][0], "Couldn't extract header row properly");
+        assertEquals("Age", extractedCsv[0][1], "Couldn't extract header row properly");
+        assertEquals("City", extractedCsv[0][2], "Couldn't extract header row properly");
+
+        // First row
+        assertEquals("John Doe", extractedCsv[1][0], "Couldn't extract first data row properly");
+        assertEquals("30", extractedCsv[1][1], "Couldn't extract first data row properly");
+        assertEquals("New York", extractedCsv[1][2], "Couldn't extract first data row properly");
+
+        // Second row
+        assertEquals("Jane Doe", extractedCsv[2][0], "Couldn't extract second data row properly");
+        assertEquals("25", extractedCsv[2][1], "Couldn't extract second data row properly");
+        assertEquals("Los Angeles", extractedCsv[2][2], "Couldn't extract second data row properly");
+
+        // Third row
+        assertEquals("Alice", extractedCsv[3][0], "Couldn't extract third data row properly");
+        assertEquals("35", extractedCsv[3][1], "Couldn't extract third data row properly");
+        assertEquals("Chicago", extractedCsv[3][2], "Couldn't extract third data row properly");
+
+        // Fourth row
+        assertEquals("Bob", extractedCsv[4][0], "Couldn't extract fourth data row properly");
+        assertEquals("40", extractedCsv[4][1], "Couldn't extract fourth data row properly");
+        assertEquals("Houston", extractedCsv[4][2], "Couldn't extract fourth data row properly");
+    }
+
+    @Test
+    void simpleParseExtractingDataCorrectlyFromCSVWithNoCRLFAtEnd() {
+        String csv = "Name,Age,City\r\n" +
+            "John Doe,30,New York\r\n" +
+            "Jane Doe,25,Los Angeles\r\n" +
+            "Alice,35,Chicago\r\n" +
+            "Bob,40,Houston";
 
         String[][] extractedCsv = csvMagikk.parseCsv(csv);
 
@@ -153,6 +189,18 @@ class CsvMagikkTest {
     }
 
     @Test
+    void simpleParseOneLineOnlyTest() {
+        String csv = "id,name,location";
+
+        String[][] extractedCsv = csvMagikk.parseCsv(csv);
+
+        // Headers
+        assertEquals("id", extractedCsv[0][0], "Couldn't extract header row properly");
+        assertEquals("name", extractedCsv[0][1], "Couldn't extract header row properly");
+        assertEquals("location", extractedCsv[0][2], "Couldn't extract header row properly");
+    }
+
+    @Test
     void parseWhenHavingQuotesInNameTest() {
         String csv = """
             id,name,location
@@ -238,97 +286,6 @@ class CsvMagikkTest {
     }
 
     @Test
-    void validationWhenCSVIsValidTest() {
-        String csv = "Name,Age,City\r\n" +
-                     "John Doe,30,New York\r\n" +
-                     "Jane Doe,25,Los Angeles\r\n" +
-                     "Alice,35,Chicago\r\n" +
-                     "Bob,40,Houston\r\n";
-
-        boolean validationResult = csvMagikk.isValidCsv(csv, System.out, true);
-        assertTrue(validationResult, "Did not return true on valid csv");
-    }
-
-    @Test
-    void validationWhenCSVIsValidLegacyRTest() {
-        String csv = "Name,Age,City\r" +
-            "John Doe,30,New York\r" +
-            "Jane Doe,25,Los Angeles\r" +
-            "Alice,35,Chicago\r" +
-            "Bob,40,Houston\r";
-
-        boolean validationResult = csvMagikk.isValidCsv(csv, System.out, true);
-        assertTrue(validationResult, "Did not return true on valid csv");
-    }
-
-    @Test
-    void validationWhenCSVIsValidAndContainsSpecialSymbolsTest() {
-        String csv = """
-            id,name,location
-            1,John Doe,New York
-            2,James Doe,\"\"\"New\"\" York\"
-            3,Mary Doe,\"New, York\"
-            4,Jack Doe,\"\"\"New\"\", York\"
-            5,\"\"\"Jane Doe\",\",\"\"New\"\", York\"
-            6,\"\"\"Jim Doe\",\",\"\"New\"\",\r\n York\"
-            """;
-
-        boolean validationResult = csvMagikk.isValidCsv(csv, true);
-        assertTrue(validationResult, "Did not return true on valid csv");
-    }
-
-    @Test
-    void validationWhenCSVIsInvalidExtraCommaTest() {
-        // Has one extra comma on first row
-        String csv = """
-            id,name,location,
-            1,John Doe,New York
-            2,James Doe,\"\"\"New\"\" York\"
-            3,Mary Doe,\"New, York\"
-            4,Jack Doe,\"\"\"New\"\", York\"
-            5,\"\"\"Jane Doe\",\",\"\"New\"\", York\"
-            6,\"\"\"Jim Doe\",\",\"\"New\"\",\r\n York\"
-            """;
-
-        boolean validationResult = csvMagikk.isValidCsv(csv, true);
-        assertFalse(validationResult, "Did not return false when having an extra comma in headers");
-    }
-
-    @Test
-    void validationWhenCSVIsInvalidNotQuotedAndEscapedProperlyTest() {
-        // Second row uses quotes, but they are not properly escaped
-        String csv = """
-            id,name,location,
-            1,John Doe,New York
-            2,James Doe,\"New\" York
-            3,Mary Doe,\"New, York\"
-            4,Jack Doe,\"\"\"New\"\", York\"
-            5,\"\"\"Jane Doe\",\",\"\"New\"\", York\"
-            6,\"\"\"Jim Doe\",\",\"\"New\"\",\r\n York\"
-            """;
-
-        boolean validationResult = csvMagikk.isValidCsv(csv, true);
-        assertFalse(validationResult, "Did not return false when having improperly escaped cell and quotes");
-    }
-
-    @Test
-    void validationWhenCSVIsInvalidNotEscapedProperlyTest() {
-        // Second row uses properly escaped quotes, but field is not enclosed in quotes
-        String csv = """
-            id,name,location,
-            1,John Doe,New York
-            2,James Doe,\"\"New\"\" York
-            3,Mary Doe,\"New, York\"
-            4,Jack Doe,\"\"\"New\"\", York\"
-            5,\"\"\"Jane Doe\",\",\"\"New\"\", York\"
-            6,\"\"\"Jim Doe\",\",\"\"New\"\",\r\n York\"
-            """;
-
-        boolean validationResult = csvMagikk.isValidCsv(csv, true);
-        assertFalse(validationResult, "Did not return false when having improperly escaped cell");
-    }
-
-    @Test
     void toCSVWith2DArrayTest() {
         String expectedCsv = "id,name,location\r\n" +
                              "1,John Doe,New York\r\n" +
@@ -387,5 +344,612 @@ class CsvMagikkTest {
         String actualCsvRow = csvMagikk.toCsvRow(csvRow);
 
         assertEquals(expectedCsvRow, actualCsvRow, "Did not create proper CSV row String");
+    }
+
+    @Test
+    void parseCsvThrowsWhenQuoteIsNotClosedTest() {
+        String csv = "Name,Age\r\nJohn,\"30";
+
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> csvMagikk.parseCsv(csv)
+        );
+    }
+
+    @Test
+    void parseCsvThrowsWhenTextFollowsClosingQuoteTest() {
+        String csv = "Name,Age\r\n\"John\"Doe,30";
+
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> csvMagikk.parseCsv(csv)
+        );
+    }
+
+    @Test
+    void parseCsvThrowsWhenQuoteAppearsInsideUnquotedFieldTest() {
+        String csv = "Name,Age\r\nJo\"hn,30";
+
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> csvMagikk.parseCsv(csv)
+        );
+    }
+
+    @Test
+    void parseCsvThrowsWhenQuoteIsNotProperlyEscapedTest() {
+        String csv = "Name,Age\r\n\"John \"Doe\",30";
+
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> csvMagikk.parseCsv(csv)
+        );
+    }
+
+    @Test
+    void parseCsvThrowsWhenQuotedFieldIsFollowedByTextTest() {
+        String csv = "Name,Age\r\n\"John\"abc,30";
+
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> csvMagikk.parseCsv(csv)
+        );
+    }
+
+    @Test
+    void parseCsvThrowsWhenQuotedFieldIsFollowedByCommaTextTest() {
+        String csv = "Name,Age,City\r\n\"John\"abc,30,London";
+
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> csvMagikk.parseCsv(csv)
+        );
+    }
+
+    @Test
+    void parseCsvThrowsWhenRowsHaveDifferentNumberOfColumnsTest() {
+        String csv = "Name,Age,City\r\n" +
+            "John,30,London\r\n" +
+            "Jane,25\r\n";
+
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> csvMagikk.parseCsv(csv)
+        );
+    }
+
+    @Test
+    void parseCsvThrowsWhenCsvIsNullTest() {
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> csvMagikk.parseCsv(null)
+        );
+    }
+
+    @Test
+    void parseCsvThrowsWhenCsvIsBlankTest() {
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> csvMagikk.parseCsv("   \t\r\n  ")
+        );
+    }
+
+    @Test
+    void parseCsvParsesEmptyFieldsTest() {
+        String csv = "Name,Age,City\r\nJohn,,London\r\n";
+
+        String[][] result = csvMagikk.parseCsv(csv);
+
+        assertEquals(2, result.length);
+        assertArrayEquals(
+            new String[]{"Name", "Age", "City"},
+            result[0]
+        );
+        assertArrayEquals(
+            new String[]{"John", "", "London"},
+            result[1]
+        );
+    }
+
+    @Test
+    void parseCsvParsesEmptyFirstFieldTest() {
+        String csv = ",Age,City\r\n,30,London\r\n";
+
+        String[][] result = csvMagikk.parseCsv(csv);
+
+        assertArrayEquals(
+            new String[]{"", "Age", "City"},
+            result[0]
+        );
+
+        assertArrayEquals(
+            new String[]{"", "30", "London"},
+            result[1]
+        );
+    }
+
+    @Test
+    void parseCsvParsesEmptyLastFieldTest() {
+        String csv = "Name,Age,City\r\nJohn,30,\r\n";
+
+        String[][] result = csvMagikk.parseCsv(csv);
+
+        assertArrayEquals(
+            new String[]{"Name", "Age", "City"},
+            result[0]
+        );
+
+        assertArrayEquals(
+            new String[]{"John", "30", ""},
+            result[1]
+        );
+    }
+
+    @Test
+    void parseCsvParsesSingleEmptyFieldTest() {
+        String csv = "\"\"";
+
+        String[][] result = csvMagikk.parseCsv(csv);
+
+        assertEquals(1, result.length);
+        assertEquals(1, result[0].length);
+        assertEquals("", result[0][0]);
+    }
+
+    @Test
+    void parseCsvParsesMultipleEmptyFieldTest() {
+        String csv = "\"\",\"\",\"\"";
+
+        String[][] result = csvMagikk.parseCsv(csv);
+
+        assertEquals(1, result.length);
+        assertEquals(3, result[0].length);
+    }
+
+    @Test
+    void parseCsvParsesSingleRowTest() {
+        String csv = "n\r" +
+                     "1\r" +
+                     "2\r" +
+                     "\r" +
+                     "4";
+
+        String[][] result = csvMagikk.parseCsv(csv);
+
+        assertEquals(5, result.length);
+        assertEquals("", result[3][0]);
+        assertEquals("4", result[4][0]);
+    }
+
+    @Test
+    void parseCsvParsesCommasOnlyTest() {
+        String csv = ",,,\n" +
+                     ",,,\n" +
+                     ",,,\n" +
+                     ",,,";
+
+        String[][] result = csvMagikk.parseCsv(csv);
+
+        assertEquals(4, result.length);
+        assertEquals(4, result[0].length);
+        assertEquals("", result[0][0]);
+    }
+
+    @Test
+    void parseCsvPreservesTrailingEmptyFieldTest() {
+        String csv = "a,b,";
+
+        String[][] result = csvMagikk.parseCsv(csv);
+
+        assertArrayEquals(
+            new String[]{"a", "b", ""},
+            result[0]
+        );
+    }
+
+    @Test
+    void parseCsvPreservesTrailingEmptyFieldTestQuoted() {
+        String csv = "a,b,\"\"";
+
+        String[][] result = csvMagikk.parseCsv(csv);
+
+        assertArrayEquals(
+            new String[]{"a", "b", ""},
+            result[0]
+        );
+    }
+
+    @Test
+    void parseCsvPreservesTrailingEmptyFieldMiddle() {
+        String csv = "a,b,,c";
+
+        String[][] result = csvMagikk.parseCsv(csv);
+
+        assertArrayEquals(
+            new String[]{"a", "b", "", "c"},
+            result[0]
+        );
+    }
+
+    @Test
+    void parseCsvPreservesTrailingEmptyFieldMiddleQuoted() {
+        String csv = "a,b,\"\",c";
+
+        String[][] result = csvMagikk.parseCsv(csv);
+
+        assertArrayEquals(
+            new String[]{"a", "b", "", "c"},
+            result[0]
+        );
+    }
+
+    @Test
+    void parseCsvParsesQuotedEmptyFieldTest() {
+        String csv = "Name,Age\r\n\"John\",\"\"\r\n";
+
+        String[][] result = csvMagikk.parseCsv(csv);
+
+        assertEquals("John", result[1][0]);
+        assertEquals("", result[1][1]);
+    }
+
+    @Test
+    void parseCsvParsesEmbeddedNewlineInsideQuotedFieldTest() {
+        String csv = "Name,Description\r\n" +
+                     "John,\"Hello\r\nWorld\"\r\n";
+
+        String[][] result = csvMagikk.parseCsv(csv);
+
+        assertEquals("John", result[1][0]);
+        assertEquals("Hello\r\nWorld", result[1][1]);
+    }
+
+    @Test
+    void parseCsvParsesEmbeddedLFInsideQuotedFieldTest() {
+        String csv = "Name,Description\r\n" +
+                     "John,\"Hello\nWorld\"\r\n";
+
+        String[][] result = csvMagikk.parseCsv(csv);
+
+        assertEquals("Hello\nWorld", result[1][1]);
+    }
+
+    @Test
+    void parseCsvParsesEmbeddedCRInsideQuotedFieldTest() {
+        String csv = "Name,Description\r\n" +
+                     "John,\"Hello\rWorld\"\r\n";
+
+        String[][] result = csvMagikk.parseCsv(csv);
+
+        assertEquals("Hello\rWorld", result[1][1]);
+    }
+
+    @Test
+    void parseCsvParsesEscapedQuotesTest() {
+        String csv = "Name\r\n\"John \"\"Johnny\"\" Doe\"\r\n";
+
+        String[][] result = csvMagikk.parseCsv(csv);
+
+        assertEquals(
+            "John \"Johnny\" Doe",
+            result[1][0]
+        );
+    }
+
+    @Test
+    void parseCsvParsesMultipleEscapedQuotesTest() {
+        String csv = "\"\"\"Hello\"\" \"\"World\"\"\"";
+
+        String[][] result = csvMagikk.parseCsv(csv);
+
+        assertEquals(
+            "\"Hello\" \"World\"",
+            result[0][0]
+        );
+    }
+
+    @Test
+    void parseCsvAcceptsLFOnlyRowsTest() {
+        String csv = "Name,Age\nJohn,30\nJane,25";
+
+        String[][] result = csvMagikk.parseCsv(csv);
+
+        assertEquals(3, result.length);
+        assertArrayEquals(
+            new String[]{"Name", "Age"},
+            result[0]
+        );
+        assertArrayEquals(
+            new String[]{"John", "30"},
+            result[1]
+        );
+        assertArrayEquals(
+            new String[]{"Jane", "25"},
+            result[2]
+        );
+    }
+
+    @Test
+    void parseCsvAcceptsMixedLineEndingsTest() {
+        String csv = "Name,Age\r\n" +
+                     "John,30\n" +
+                     "Jane,25\r" +
+                     "Bob,40";
+
+        String[][] result = csvMagikk.parseCsv(csv);
+
+        assertEquals(4, result.length);
+        assertArrayEquals(new String[]{"Name", "Age"}, result[0]);
+        assertArrayEquals(new String[]{"John", "30"}, result[1]);
+        assertArrayEquals(new String[]{"Jane", "25"}, result[2]);
+        assertArrayEquals(new String[]{"Bob", "40"}, result[3]);
+    }
+
+    @Test
+    void parseCsvHandlesSingleColumnRowsTest() {
+        String csv = "Name\r\nJohn\r\nJane\r\nBob";
+
+        String[][] result = csvMagikk.parseCsv(csv);
+
+        assertEquals(4, result.length);
+        assertArrayEquals(new String[]{"Name"}, result[0]);
+        assertArrayEquals(new String[]{"John"}, result[1]);
+        assertArrayEquals(new String[]{"Jane"}, result[2]);
+        assertArrayEquals(new String[]{"Bob"}, result[3]);
+    }
+
+    @Test
+    void parseCsvHandlesLargeNumberOfColumnsTest() {
+        String csv =
+            "1,2,3,4,5,6,7,8,9,10," +
+            "11,12,13,14,15,16,17,18,19,20";
+
+        String[][] result = csvMagikk.parseCsv(csv);
+
+        assertEquals(1, result.length);
+        assertEquals(20, result[0].length);
+        assertEquals("1", result[0][0]);
+        assertEquals("20", result[0][19]);
+    }
+
+
+    @Test
+    void toCsvThrowsWhenInputIsNullTest() {
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> csvMagikk.toCsv((String[][]) null)
+        );
+    }
+
+    @Test
+    void toCsvThrowsWhenRowIsNullTest() {
+        String[][] csv = {
+            {"John", "30"},
+            null
+        };
+
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> csvMagikk.toCsv(csv)
+        );
+    }
+
+    @Test
+    void toCsvThrowsWhenRowIsEmptyTest() {
+        String[][] csv = {
+            {"John", "30"},
+            {}
+        };
+
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> csvMagikk.toCsv(csv)
+        );
+    }
+
+    @Test
+    void toCsvThrowsWhenCellIsNullTest() {
+        String[][] csv = {
+            {"John", null}
+        };
+
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> csvMagikk.toCsv(csv)
+        );
+    }
+
+    @Test
+    void toCsvRowThrowsWhenColumnsAreNullTest() {
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> csvMagikk.toCsvRow(null)
+        );
+    }
+
+    @Test
+    void toCsvRowThrowsWhenColumnsAreEmptyTest() {
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> csvMagikk.toCsvRow(new String[0])
+        );
+    }
+
+    @Test
+    void escapeThrowsWhenCellIsNullTest() {
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> csvMagikk.escape(null)
+        );
+    }
+
+    @Test
+    void escapeLeavesNormalTextUnchangedTest() {
+        assertEquals(
+            "Hello World",
+            csvMagikk.escape("Hello World")
+        );
+    }
+
+    @Test
+    void escapeQuotesOnlyTest() {
+        assertEquals(
+            "\"\"\"Hello\"\"\"",
+            csvMagikk.escape("\"Hello\"")
+        );
+    }
+
+    @Test
+    void escapeCommaOnlyTest() {
+        assertEquals(
+            "\"Hello,World\"",
+            csvMagikk.escape("Hello,World")
+        );
+    }
+
+    @Test
+    void escapeLFOnlyTest() {
+        assertEquals(
+            "\"Hello\nWorld\"",
+            csvMagikk.escape("Hello\nWorld")
+        );
+    }
+
+    @Test
+    void parseAndSerializeShouldRoundTripSimpleCsvTest() {
+        String[][] original = {
+            {"Name", "Age", "City"},
+            {"John", "30", "London"},
+            {"Jane", "25", "Paris"}
+        };
+
+        String serialized = csvMagikk.toCsv(original);
+        String[][] parsed = csvMagikk.parseCsv(serialized);
+
+        assertArrayEquals(original, parsed);
+    }
+
+    @Test
+    void parseAndSerializeShouldRoundTripSpecialCharactersTest() {
+        String[][] original = {
+            {"Name", "Description"},
+            {"John", "Hello, world"},
+            {"Jane", "She said \"hello\""},
+            {"Bob", "Line one\r\nLine two"},
+            {"Alice", "Comma, quote \" and newline\n"}
+        };
+
+        String serialized = csvMagikk.toCsv(original);
+        String[][] parsed = csvMagikk.parseCsv(serialized);
+
+        assertArrayEquals(original, parsed);
+    }
+
+    @Test
+    void escapeAndParseShouldRoundTripSingleCellTest() {
+        String original = "Hello, \"world\"\r\nHow are you?";
+
+        String escaped = csvMagikk.escape(original);
+        String[][] parsed = csvMagikk.parseCsv(escaped);
+
+        assertEquals(original, parsed[0][0]);
+    }
+
+    @Test
+    void customColumnDelimiterTest() {
+        CsvMagikk processor = CsvMagikk.create(';', '"');
+
+        String csv = "Name;Age;City\r\nJohn;30;London";
+
+        String[][] result = processor.parseCsv(csv);
+
+        assertArrayEquals(
+            new String[]{"Name", "Age", "City"},
+            result[0]
+        );
+
+        assertArrayEquals(
+            new String[]{"John", "30", "London"},
+            result[1]
+        );
+    }
+
+    @Test
+    void customColumnDelimiterShouldBeEscapedTest() {
+        CsvMagikk processor = CsvMagikk.create(';', '"');
+
+        assertEquals(
+            "\"Hello;World\"",
+            processor.escape("Hello;World")
+        );
+    }
+
+    @Test
+    void customStringDelimiterTest() {
+        CsvMagikk processor = CsvMagikk.create(',', '\'');
+
+        String csv = "Name,Description\r\n" +
+                     "'John, Doe','He said ''hello'''";
+
+        String[][] result = processor.parseCsv(csv);
+
+        assertEquals("John, Doe", result[1][0]);
+        assertEquals("He said 'hello'", result[1][1]);
+    }
+
+    @Test
+    void customDelimitersShouldRoundTripTest() {
+        CsvMagikk processor = CsvMagikk.create(';', '\'');
+
+        String[][] original = {
+            {"Name", "Description"},
+            {"John; Doe", "He said 'hello'"},
+            {"Jane", "Hello\nWorld"}
+        };
+
+        String serialized = processor.toCsv(original);
+        String[][] parsed = processor.parseCsv(serialized);
+
+        assertArrayEquals(original, parsed);
+    }
+
+    @Test
+    void createThrowsWhenDelimitersAreTheSameTest() {
+        assertThrows(
+            IllegalStateException.class,
+            () -> CsvMagikk.create(',', ',')
+        );
+    }
+
+    @Test
+    void createThrowsWhenColumnDelimiterIsCRTest() {
+        assertThrows(
+            IllegalStateException.class,
+            () -> CsvMagikk.create('\r', '"')
+        );
+    }
+
+    @Test
+    void createThrowsWhenColumnDelimiterIsLFTest() {
+        assertThrows(
+            IllegalStateException.class,
+            () -> CsvMagikk.create('\n', '"')
+        );
+    }
+
+    @Test
+    void createThrowsWhenStringDelimiterIsCRTest() {
+        assertThrows(
+            IllegalStateException.class,
+            () -> CsvMagikk.create(',', '\r')
+        );
+    }
+
+    @Test
+    void createThrowsWhenStringDelimiterIsLFTest() {
+        assertThrows(
+            IllegalStateException.class,
+            () -> CsvMagikk.create(',', '\n')
+        );
     }
 }

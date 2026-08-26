@@ -6,7 +6,7 @@
 
     <groupId>com.andreyprodromov.csv</groupId>
     <artifactId>csv-magikk</artifactId>
-    <version>0.3.0</version>
+    <version>1.0.0</version>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
@@ -28,6 +28,7 @@
             <artifactId>maven-surefire-plugin</artifactId>
             <version>3.3.1</version>
         </dependency>
+
     </dependencies>
 
     <build>
@@ -36,6 +37,19 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.3.1</version>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.4.2</version>
+                <configuration>
+                    <archive>
+                        <manifestEntries>
+                            <Built-By>Andrey Prodromov</Built-By>
+                        </manifestEntries>
+                    </archive>
+                </configuration>
             </plugin>
         </plugins>
     </build>

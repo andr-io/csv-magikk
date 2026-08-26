@@ -1,42 +1,46 @@
 package com.andreyprodromov.csv;
 
-import java.io.OutputStream;
-import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * This class provides functionality for manipulation and validation of csv Strings
+ * Provides parsing, serialization, and escaping functionality for CSV data.
+ *
+ * <p>A {@code CsvMagikk} instance is configured with a column delimiter and a
+ * string delimiter. By default, comma ({@code ,}) is used as the column
+ * delimiter and double quote ({@code "}) is used as the string delimiter.</p>
+ *
+ * <p>Quoted fields may contain column delimiters, line breaks, and escaped
+ * string delimiters. A string delimiter inside a quoted field is represented
+ * by two consecutive string delimiters.</p>
+ *
+ * <p>For example, with the default configuration:</p>
+ *
+ * <pre>{@code
+ * name,description
+ * John,"Hello, world"
+ * Jane,"She said ""hello"""
+ * }</pre>
+ *
+ * <p>The parser accepts both CRLF ({@code \r\n}) and individual CR or LF
+ * characters as row separators. Rows may also contain embedded line breaks
+ * when those line breaks occur inside a quoted field.</p>
  */
 public class CsvMagikk {
+
+    private static final int INITIAL_COLUMN_COUNT = 16;
 
     // Logic related
     private final char columnDelimiter;
     private final char stringDelimiter;
 
-    // Performance and cache related
-    private final String strDelimiter;
-    private final String escapedStrDelimiter;
+    // Performance
     private final StringBuilder parserBuilder = new StringBuilder();
     private final StringBuilder escapedCellBuilder = new StringBuilder();
     private final StringBuilder toCsvBuilder = new StringBuilder();
     private final StringBuilder toCsvRowBuilder = new StringBuilder();
 
-
-    /**
-     * Creates a default object that has a COMMA for column delimiter and DOUBLE QUOTE for string delimiter
-     */
-    @Deprecated
-    public CsvMagikk() {
-        this(',', '"');
-    }
-
-    /**
-     * @param columnDelimiter the column delimiter to be used with parsing, creating or validating csv Strings
-     * @param stringDelimiter the string delimiter to be used with parsing, creating or validating csv Strings
-     */
-    @Deprecated
-    public CsvMagikk(char columnDelimiter, char stringDelimiter) {
+    private CsvMagikk(char columnDelimiter, char stringDelimiter) {
         if (columnDelimiter == stringDelimiter) {
             throw new IllegalStateException("Cannot have same columnDelimiter and stringDelimiter");
         }
@@ -59,354 +63,423 @@ public class CsvMagikk {
 
         this.columnDelimiter = columnDelimiter;
         this.stringDelimiter = stringDelimiter;
-
-        this.strDelimiter = String.valueOf(stringDelimiter);
-        this.escapedStrDelimiter = strDelimiter + strDelimiter;
     }
 
     /**
-     * @param csv the csv String to check
-     * @return true if file is RFC 4180 compliant
-     */
-    public boolean isValidCsv(String csv) {
-        return isValidCsv(csv, OutputStream.nullOutputStream(), false);
-    }
-
-    public boolean isValidCsv(String csv, boolean treatWarningsAsErrors) {
-        return isValidCsv(csv, OutputStream.nullOutputStream(), treatWarningsAsErrors);
-    }
-
-    /**
-     * @param csv the csv String to check
-     * @param log the output where errors and warnings to be printer
-     * @return true if file is RFC 4180 compliant and has no warnings
-     */
-    public boolean isValidCsv(String csv, OutputStream log) {
-        return isValidCsv(csv, log, true);
-    }
-
-    /**
-     * @param csv the csv String to check
-     * @param log the output where errors and warnings to be printer
-     * @param treatWarningsAsErrors if warnings should be treated as errors
-     * @return true if file is RFC 4180 compliant
-     */
-    public boolean isValidCsv(String csv, OutputStream log, boolean treatWarningsAsErrors) {
-        PrintStream out = new PrintStream(log);
-        boolean hasErrors = false;
-        boolean hasWarnings = false;
-
-        if (csv == null) {
-            out.println("ERROR: csv is null");
-            return false;
-        }
-
-        if (csv.isBlank()) {
-            out.println("ERROR: csv is blank");
-            return false;
-        }
-
-        char[] arr = csv.toCharArray();
-        int headerColumnCount = calculateColumnsCount(arr);
-        int idx = 0;
-        int currentColumnCount = 0;
-        boolean notInEscapedString = true;
-        int rowNumber = 1;
-        boolean cellStartedWithRfc4180EscapedString = false;
-
-        while (idx < arr.length) {
-            while (idx < arr.length && (arr[idx] != '\r' && arr[idx] != '\n' || !notInEscapedString)) {
-
-                // If we reach a delimiter with an even number of quotes, then that means it is the end of a column
-                if (arr[idx] == columnDelimiter && notInEscapedString) {
-                    if (cellStartedWithRfc4180EscapedString && idx > 0 && arr[idx - 1] != stringDelimiter) {
-                        out.printf(
-                                "ERROR: row number %d has a column that started with opening quote, but didn't use closing quote%n",
-                                rowNumber
-                        );
-
-                        hasErrors = true;
-                    }
-
-                    currentColumnCount++;
-                    cellStartedWithRfc4180EscapedString = idx + 1 < arr.length && arr[idx + 1] == stringDelimiter;
-                } else if (arr[idx] == stringDelimiter) {
-                    if (!cellStartedWithRfc4180EscapedString) {
-                        out.printf(
-                                "ERROR: row number %d appears to use quotes without enclosing field in quotes%n",
-                                rowNumber
-                        );
-
-                        hasErrors = true;
-                    } else {
-                        notInEscapedString = !notInEscapedString;
-                        if (notInEscapedString && idx + 1 < arr.length && arr[idx + 1] == stringDelimiter) {
-                            idx++; // Skip next quote
-                            notInEscapedString = false; // Because we move index forward we need to account for skipped quote
-                        }
-                    }
-                }
-
-                if (idx < arr.length && idx + 1 < arr.length && arr[idx] == '\r' && arr[idx + 1] != '\n') {
-                    out.printf(
-                            "WARNING: row number %d uses CR without LF%n",
-                            rowNumber
-                    );
-
-                    hasWarnings = true;
-                }
-
-                idx++;
-            }
-
-            // Legacy Mac CSV's with /r support
-            if (idx + 1 < arr.length && arr[idx] == '\r' && arr[idx + 1] == '\n') {
-                idx++;
-            }
-
-            // Reached end of line, so we add the last column
-            currentColumnCount++;
-
-            if (currentColumnCount != headerColumnCount) {
-                out.printf(
-                        "ERROR: row number %d has different number of columns (Expected: %d, Actual: %d)%n",
-                        rowNumber,
-                        headerColumnCount,
-                        currentColumnCount
-                );
-
-                hasErrors = true;
-            }
-
-            if (!notInEscapedString) {
-                out.printf(
-                        "ERROR: last column in row number %d does not have properly escaped quotes%n",
-                        rowNumber
-                );
-
-                hasErrors = true;
-            }
-
-            // Prepare for next csv row
-            currentColumnCount = 0;
-            idx++;
-            rowNumber++;
-
-            if (idx + 1 < arr.length && (arr[idx + 1] == '\r' || arr[idx + 1] == '\n')) {
-                out.printf(
-                        "WARNING: row number %d appears to have more than one newline%n",
-                        rowNumber
-                );
-
-                hasWarnings = true;
-            }
-
-            // Check RFC4180
-            cellStartedWithRfc4180EscapedString = idx < arr.length && arr[idx] == stringDelimiter;
-        }
-
-        return !(hasErrors || (treatWarningsAsErrors && hasWarnings));
-    }
-
-    /**
-     * @param csv the csv to be parsed
-     * @return a {@code String[][]} matrix created from parsing the file
+     * Parses a CSV string into a two-dimensional array of strings.
+     *
+     * <p>Each CSV row is represented by a {@code String[]} and the returned
+     * {@code String[][]} contains all parsed rows.</p>
+     *
+     * <p>Quoted fields are supported. A quoted field may contain the configured
+     * column delimiter, CR/LF characters, and escaped string delimiters. Two
+     * consecutive string delimiters inside a quoted field are interpreted as
+     * one literal string delimiter.</p>
+     *
+     * <p>All rows must contain the same number of columns. If a row contains a
+     * different number of columns, an {@link IllegalArgumentException} is thrown.</p>
+     *
+     * <p>The final row does not need to end with a line separator.</p>
+     *
+     * @param csv the CSV string to parse
+     * @return a two-dimensional array containing the parsed rows and columns
+     * @throws IllegalArgumentException if {@code csv} is {@code null}, blank,
+     *         malformed, contains an unterminated quoted field, or contains rows
+     *         with different numbers of columns
      */
     public String[][] parseCsv(String csv) {
         if (csv == null) {
-            throw new RuntimeException("Csv string cannot be null");
+            throw new IllegalArgumentException("CSV string cannot be null");
         }
 
         if (csv.isBlank()) {
-            throw new RuntimeException("Cannot parse a blank file");
+            throw new IllegalArgumentException("Cannot parse a blank file");
         }
 
-        char[] arr = csv.toCharArray();
-        int columnsCount = calculateColumnsCount(arr);
-        int idx = 0;
-        int bufferIdx = 0;
-        boolean notInEscapedString = true;
-        boolean cellStartedWithRfc4180EscapedString = true;
+        // Edge case
+        if (csv.equals("\"\"")) {
+            return new String[][] {
+                new String[]{""}
+            };
+        }
 
         parserBuilder.setLength(0);
+
+        char[] chars = csv.toCharArray();
+        int length = chars.length;
+        int index = 0;
+
         List<String[]> rows = new ArrayList<>();
 
-        // Parse Csv
-        while (idx < arr.length) {
-            String[] buffer = new String[columnsCount];
+        String[] currentRow = new String[INITIAL_COLUMN_COUNT];
+        int columnIndex = 0;
+        int expectedColumnCount = -1;
 
-            while (idx < arr.length && (arr[idx] != '\r' && arr[idx] != '\n' || !notInEscapedString)) {
+        boolean inQuotes = false;
 
-                // If we reach a delimiter with an even number of quotes, then that means it is the end of a column
-                if (notInEscapedString && arr[idx] == columnDelimiter) {
-                    buffer[bufferIdx] = parserBuilder.toString();
-                    bufferIdx++;
-                    parserBuilder.setLength(0);
-                    cellStartedWithRfc4180EscapedString = idx + 1 < arr.length && arr[idx + 1] == stringDelimiter;
-                } else if (arr[idx] == stringDelimiter && cellStartedWithRfc4180EscapedString) {
-                    notInEscapedString = !notInEscapedString;
-                    if (notInEscapedString && idx + 1 < arr.length && arr[idx + 1] == stringDelimiter) {
+        while (index < length) {
+            char c = chars[index];
+
+            if (inQuotes) {
+                if (c == stringDelimiter) {
+                    // Escaped quote: "" -> "
+                    if (index + 1 < length && chars[index + 1] == stringDelimiter) {
                         parserBuilder.append(stringDelimiter);
-                        idx++; // Skip next quote
-                        notInEscapedString = false; // Because we move index forward we need to account for skipped quote
+                        index += 2;
+                        continue;
                     }
-                } else {
-                    // Only append delimiter and CR if we're in quoted text.
-                    // Skips CR if at end of line.
-                    if (arr[idx] != '\r' || !notInEscapedString) {
-                        parserBuilder.append(arr[idx]);
+
+                    // Closing quote
+                    inQuotes = false;
+                    index++;
+
+                    // After a closing quote we only allow:
+                    // delimiter, newline, or end of input.
+                    if (index < length) {
+                        c = chars[index];
+
+                        if (c != columnDelimiter && c != '\r' && c != '\n') {
+                            throw new IllegalArgumentException(
+                                "The CSV file is malformed"
+                            );
+                        }
                     }
+
+                    continue;
                 }
 
-                idx++;
+                // Append a whole block until the next quote.
+                int start = index;
+
+                while (index < length && chars[index] != stringDelimiter) {
+                    index++;
+                }
+
+                parserBuilder.append(chars, start, index - start);
+                continue;
             }
 
-            // Legacy Mac CSV's with /r support
-            if (idx + 1 < arr.length && arr[idx] == '\r' && arr[idx + 1] == '\n') {
-                idx++;
+            // Opening quote
+            if (c == stringDelimiter) {
+                inQuotes = true;
+                index++;
+                continue;
             }
 
-            // Reached end of line, so we add the last column
-            buffer[bufferIdx] = parserBuilder.toString();
-            parserBuilder.setLength(0);
+            // End of column
+            if (c == columnDelimiter) {
+                if (columnIndex == currentRow.length) {
+                    currentRow = java.util.Arrays.copyOf(
+                        currentRow,
+                        currentRow.length * 2
+                    );
+                }
 
-            // Add columns to list, reset buffer index, skip newline
-            rows.add(buffer);
-            bufferIdx = 0;
-            idx++;
+                currentRow[columnIndex++] = parserBuilder.toString();
+                parserBuilder.setLength(0);
 
-            // Check RFC4180
-            cellStartedWithRfc4180EscapedString = idx < arr.length && arr[idx] == stringDelimiter;
+                index++;
+                continue;
+            }
+
+            // End of row
+            if (c == '\r' || c == '\n') {
+                if (columnIndex == currentRow.length) {
+                    currentRow = java.util.Arrays.copyOf(
+                        currentRow,
+                        currentRow.length * 2
+                    );
+                }
+
+                currentRow[columnIndex++] = parserBuilder.toString();
+                parserBuilder.setLength(0);
+
+                // Check column count.
+                if (expectedColumnCount == -1) {
+                    expectedColumnCount = columnIndex;
+                } else if (columnIndex != expectedColumnCount) {
+                    throw new IllegalArgumentException(
+                        "Row has " + columnIndex
+                            + " columns, expected " + expectedColumnCount
+                    );
+                }
+
+                rows.add(
+                    columnIndex == currentRow.length
+                        ? currentRow
+                        : java.util.Arrays.copyOf(currentRow, columnIndex)
+                );
+
+                currentRow = new String[currentRow.length];
+                columnIndex = 0;
+
+                // CRLF is one newline.
+                if (c == '\r'
+                    && index + 1 < length
+                    && chars[index + 1] == '\n') {
+                    index += 2;
+                } else {
+                    index++;
+                }
+
+                continue;
+            }
+
+            // Ordinary text.
+            // Find the next CSV control character and append the entire block.
+            int start = index;
+
+            while (index < length) {
+                c = chars[index];
+
+                if (c == stringDelimiter
+                    || c == columnDelimiter
+                    || c == '\r'
+                    || c == '\n') {
+                    break;
+                }
+
+                index++;
+            }
+
+            parserBuilder.append(chars, start, index - start);
+        }
+
+        if (inQuotes) {
+            throw new IllegalArgumentException(
+                "CSV contains an unterminated quoted field"
+            );
+        }
+
+        // Handle a final row without a trailing newline.
+        if (columnIndex > 0 || !parserBuilder.isEmpty()) {
+            if (columnIndex == currentRow.length) {
+                currentRow = java.util.Arrays.copyOf(
+                    currentRow,
+                    currentRow.length * 2
+                );
+            }
+
+            currentRow[columnIndex++] = parserBuilder.toString();
+
+            // Check final row.
+            if (expectedColumnCount != -1 && columnIndex != expectedColumnCount) {
+                throw new IllegalArgumentException(
+                    "Row has " + columnIndex
+                        + " columns, expected " + expectedColumnCount
+                );
+            }
+
+            rows.add(
+                columnIndex == currentRow.length
+                    ? currentRow
+                    : java.util.Arrays.copyOf(currentRow, columnIndex)
+            );
         }
 
         return rows.toArray(String[][]::new);
     }
 
     /**
-     * @param csv the csv matrix to be parsed
-     * @return the {@code String} csv created from parsing the csv matrix
+     * Serializes a two-dimensional array of CSV data into a CSV string.
+     *
+     * <p>Every row is terminated with CRLF ({@code \r\n}). Fields containing the
+     * column delimiter, string delimiter, CR, or LF are automatically quoted.
+     * String delimiters inside quoted fields are escaped by doubling them.</p>
+     *
+     * <p>For example, the value {@code Hello, "world"} becomes:</p>
+     *
+     * <pre>{@code
+     * "Hello, ""world"""
+     * }</pre>
+     *
+     * @param csv the rows and columns to serialize
+     * @return the CSV representation of the supplied data
+     * @throws IllegalArgumentException if {@code csv} or any row is {@code null},
+     *         or if a row contains no columns
      */
     public String toCsv(String[][] csv) {
-        int columnCount = csv[0].length;
+        if (csv == null) {
+            throw new IllegalArgumentException("CSV cannot be null");
+        }
+
         toCsvBuilder.setLength(0);
 
-        for (String[] strings : csv) {
-            for (int col = 0; col < columnCount; col++) {
-                String cell = escape(strings[col]);
-                toCsvBuilder.append(cell)
-                            .append(columnDelimiter);
-            }
-
-            // Remove last delimiter and append CRLF
-            toCsvBuilder.setLength(toCsvBuilder.length() - 1);
-            toCsvBuilder.append("\r\n");
+        for (String[] row : csv) {
+            appendCsvRow(row, toCsvBuilder);
         }
 
         return toCsvBuilder.toString();
     }
 
     /**
-     * @param csv the {@code List} of csv rows to be parsed
-     * @return the {@code String} csv created from parsing the list
+     * Serializes a list of CSV rows into a CSV string.
+     *
+     * <p>Every row is terminated with CRLF ({@code \r\n}). Fields containing the
+     * column delimiter, string delimiter, CR, or LF are automatically quoted.
+     * String delimiters inside quoted fields are escaped by doubling them.</p>
+     *
+     * @param csv the list of rows to serialize
+     * @return the CSV representation of the supplied rows
+     * @throws IllegalArgumentException if {@code csv} or any row is {@code null},
+     *         or if a row contains no columns
      */
     public String toCsv(List<String[]> csv) {
-        int columnCount = csv.get(0).length;
+        if (csv == null) {
+            throw new IllegalArgumentException("CSV cannot be null");
+        }
+
         toCsvBuilder.setLength(0);
 
-        for (String[] strings : csv) {
-            for (int col = 0; col < columnCount; col++) {
-                String cell = escape(strings[col]);
-                toCsvBuilder.append(cell)
-                            .append(columnDelimiter);
-            }
-
-            // Remove last delimiter and append CRLF
-            toCsvBuilder.setLength(toCsvBuilder.length() - 1);
-            toCsvBuilder.append("\r\n");
+        for (String[] row : csv) {
+            appendCsvRow(row, toCsvBuilder);
         }
 
         return toCsvBuilder.toString();
     }
 
-    /**
-     * @param columns the columns to be joined and escaped, \r\n is appended at end
-     * @return the {@code String} csv row
-     */
-    public String toCsvRow(String[] columns) {
-        toCsvRowBuilder.setLength(0);
-
-        for (var col : columns) {
-            toCsvRowBuilder.append(escape(col))
-                           .append(columnDelimiter);
+    private void appendCsvRow(String[] row, StringBuilder builder) {
+        if (row == null) {
+            throw new IllegalArgumentException("CSV row cannot be null");
         }
 
-        // Remove last delimiter and append CRLF
-        toCsvRowBuilder.setLength(toCsvRowBuilder.length() - 1);
-        toCsvRowBuilder.append("\r\n");
+        if (row.length == 0) {
+            throw new IllegalArgumentException("CSV row cannot be empty");
+        }
+
+        for (int i = 0; i < row.length - 1; i++) {
+            appendEscaped(row[i], builder);
+            builder.append(columnDelimiter);
+        }
+
+        appendEscaped(row[row.length - 1], builder);
+
+        builder.append('\r').append('\n');
+    }
+
+    /**
+     * Serializes a single row into a CSV string.
+     *
+     * <p>Fields are separated using the configured column delimiter and the row
+     * is terminated with CRLF ({@code \r\n}). Fields that require quoting are
+     * automatically escaped.</p>
+     *
+     * @param columns the values to serialize as one CSV row
+     * @return the serialized CSV row, including its CRLF terminator
+     * @throws IllegalArgumentException if {@code columns} is {@code null},
+     *         empty, or contains a {@code null} value
+     */
+    public String toCsvRow(String[] columns) {
+        if (columns == null) {
+            throw new IllegalArgumentException("CSV columns cannot be null");
+        }
+
+        if (columns.length == 0) {
+            throw new IllegalArgumentException("CSV row cannot be empty");
+        }
+
+        toCsvRowBuilder.setLength(0);
+
+        for (int i = 0; i < columns.length - 1; i++) {
+            appendEscaped(columns[i], toCsvRowBuilder);
+            toCsvRowBuilder.append(columnDelimiter);
+        }
+
+        appendEscaped(columns[columns.length - 1], toCsvRowBuilder);
+
+        toCsvRowBuilder.append('\r').append('\n');
 
         return toCsvRowBuilder.toString();
     }
 
     /**
      * @param cell the cell to be escaped
-     * @return the {@code String} escaped cell
+     * @param out the builder where the escape cell will be appended
+     */
+    private void appendEscaped(String cell, StringBuilder out) {
+        if (cell == null) {
+            throw new IllegalArgumentException("CSV cell cannot be null");
+        }
+
+        int length = cell.length();
+
+        for (int i = 0; i < length; i++) {
+            char c = cell.charAt(i);
+
+            if (c != stringDelimiter
+                && c != columnDelimiter
+                && c != '\r'
+                && c != '\n') {
+                continue;
+            }
+
+            out.append(stringDelimiter);
+            out.append(cell, 0, i);
+
+            for (; i < length; i++) {
+                c = cell.charAt(i);
+
+                if (c == stringDelimiter) {
+                    out.append(stringDelimiter);
+                }
+
+                out.append(c);
+            }
+
+            out.append(stringDelimiter);
+            return;
+        }
+
+        out.append(cell);
+    }
+
+    /**
+     * Escapes a single value for use as a CSV field.
+     *
+     * <p>A value is enclosed in the configured string delimiter when it contains
+     * the column delimiter, string delimiter, CR, or LF. String delimiters
+     * contained within the value are doubled.</p>
+     *
+     * <p>For example, with the default delimiters:</p>
+     *
+     * <pre>{@code
+     * escape("Hello, world")       -> "\"Hello, world\""
+     * escape("She said \"Hi\"")    -> "\"She said \"\"Hi\"\"\""
+     * escape("Hello")              -> "Hello"
+     * }</pre>
+     *
+     * @param cell the value to escape
+     * @return the escaped CSV field
+     * @throws IllegalArgumentException if {@code cell} is {@code null}
      */
     public String escape(String cell) {
         escapedCellBuilder.setLength(0);
-
-        if (cell.indexOf(stringDelimiter) != -1) {
-            String escapedStringDelimiter = cell.replace(strDelimiter, escapedStrDelimiter);
-            return escapedCellBuilder.append(strDelimiter)
-                                     .append(escapedStringDelimiter)
-                                     .append(strDelimiter)
-                                     .toString();
-        } else if (cell.indexOf('\n') != -1 || cell.indexOf(columnDelimiter) != -1 || cell.indexOf('\r') != -1) {
-            return escapedCellBuilder.append(strDelimiter)
-                                     .append(cell)
-                                     .append(strDelimiter)
-                                     .toString();
-        }
-
-        return cell;
-    }
-
-
-    /**
-     * @param arr the csv String as an array
-     * @return the number of columns the csv file has
-     */
-    private int calculateColumnsCount(char[] arr) {
-        int idx = 0;
-        int columnsCount = 1; // We start from one because bottom counter doesn't count last column
-        boolean evenNumberOfQuotes = true;
-        while (arr[idx] != '\r' && arr[idx] != '\n' || !evenNumberOfQuotes) {
-            if (arr[idx] == columnDelimiter && evenNumberOfQuotes) {
-                columnsCount++;
-            }
-
-            if (arr[idx] == stringDelimiter) {
-                evenNumberOfQuotes = !evenNumberOfQuotes;
-            }
-
-            idx++;
-        }
-
-        return columnsCount;
+        appendEscaped(cell, escapedCellBuilder);
+        return escapedCellBuilder.toString();
     }
 
     /**
-     * Creates a new CSV parser that has a COMMA for column delimiter and DOUBLE QUOTE for string delimiter
+     * Creates a CSV processor using comma as the column delimiter and double quote
+     * as the string delimiter.
+     *
+     * @return a CSV processor configured for standard comma-separated values
      */
     public static CsvMagikk create() {
-        return new CsvMagikk();
+        return create(',', '"');
     }
 
     /**
-     * Creates a new CSV parser that has {@code columnDelimiter} for column delimiter and {@code stringDelimiter}
-     * for string delimiter
+     * Creates a CSV processor with custom delimiters.
      *
-     * @param columnDelimiter the column delimiter to be used with parsing, creating or validating csv Strings
-     * @param stringDelimiter the string delimiter to be used with parsing, creating or validating csv Strings
+     * <p>The column delimiter separates fields and the string delimiter identifies
+     * quoted fields. Neither delimiter may be CR or LF, and the two delimiters
+     * must be different.</p>
+     *
+     * @param columnDelimiter the character used to separate columns
+     * @param stringDelimiter the character used to quote and escape fields
+     * @return a CSV processor configured with the supplied delimiters
+     * @throws IllegalStateException if the delimiters are equal, or if either
+     *         delimiter is CR or LF
      */
     public static CsvMagikk create(char columnDelimiter, char stringDelimiter) {
         return new CsvMagikk(columnDelimiter, stringDelimiter);
